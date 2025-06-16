@@ -1,0 +1,274 @@
+zabbix_export:
+  version: "7.0"
+  template_groups:
+    - uuid: 36bff6c29af64692839d077febfc7079
+      name: "Templates/Network devices"
+  templates:
+    - uuid: 05a906a91f014b8e9609a3c9e80a8f69
+      template: "Cisco QoS by SNMP"
+      name: "Cisco QoS by SNMP"
+      description: |
+        Template for Cisco Devices with Modular QoS CLI (MQC) and SNMP-mappning of QoS-statistics activated
+
+        MIBs used:
+        IF-MIB
+        CISCO-CBQOS-MIB
+
+        Link to QOS MIB: https://mibs.observium.org/mib/CISCO-CLASS-BASED-QOS-MIB/
+      vendor:
+        name: Metricio
+        version: 7.0-2
+      groups:
+        - name: "Templates/Network devices"
+      discovery_rules:
+        - uuid: ebd4d192770b4a2a91c899f430a5ea0f
+          name: "QoS Class-Map Discovery"
+          type: SNMP_AGENT
+          snmp_oid: "walk[.1.3.6.1.2.1.2.2.1.2,.1.3.6.1.2.1.31.1.1.1.18,.1.3.6.1.4.1.9.9.166.1.1.1.1.2,.1.3.6.1.4.1.9.9.166.1.1.1.1.3,.1.3.6.1.4.1.9.9.166.1.1.1.1.4,.1.3.6.1.4.1.9.9.166.1.5.1.1.2,.1.3.6.1.4.1.9.9.166.1.7.1.1.1,.1.3.6.1.4.1.9.9.166.1.6.1.1.1,.1.3.6.1.4.1.9.9.166.1.15.1.1.2]"
+          key: qos.classmap.discovery
+          delay: 1h
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: "{#CLASSMAPNAME}"
+                value: "{$QOS.CLASS.MAPNAME.MATCHES}"
+                formulaid: A
+              - macro: "{#CLASSMAPNAME}"
+                value: "{$QOS.CLASS.MAPNAME.NOT_MATCHES}"
+                operator: NOT_MATCHES_REGEX
+                formulaid: B
+              - macro: "{#IFDESCR}"
+                value: "{$NET.IF.IFDESCR.MATCHES}"
+                formulaid: C
+              - macro: "{#IFDESCR}"
+                value: "{$NET.IF.IFDESCR.NOT_MATCHES}"
+                operator: NOT_MATCHES_REGEX
+                formulaid: D
+              - macro: "{#POLICYMAPNAME}"
+                value: "{$QOS.POLICY.MAPNAME.MATCHES}"
+                formulaid: E
+              - macro: "{#POLICYMAPNAME}"
+                value: "{$QOS.POLICY.MAPNAME.NOT_MATCHES}"
+                operator: NOT_MATCHES_REGEX
+                formulaid: F
+          description: "Disccovers the classmaps from CISCO-CLASS-BASED-QOS-MIB"
+          item_prototypes:
+            - uuid: 54bf04058ded406e99e131c8fb171931
+              name: "QoS dropped bytes by policy {#POLICYMAPNAME} using class {#CLASSMAPNAME}"
+              type: SNMP_AGENT
+              snmp_oid: "get[.1.3.6.1.4.1.9.9.166.1.15.1.1.7.{#QOSIFINDEX}.{#CBQOSOBJECTSINDEX}]"
+              key: "qos.dropped.bytes[{#QOSIFINDEX},{#CBQOSOBJECTSINDEX}]"
+              delay: 5m
+              units: B
+              description: "Number of dopped bytes by the QoS policy {#POLICAYMAPNAME} in class {#CLASSMAPNAME} on interface {#IFALIAS}. Data retrieved via Cisco CBQoS MIB from OID cbQosCMDropPkt"
+              tags:
+                - tag: classname
+                  value: "{#CLASSMAPNAME}"
+                - tag: component
+                  value: qos
+                - tag: direction
+                  value: "{#POLICYDIRECTION}"
+                - tag: ifalias
+                  value: "{#IFALIAS}"
+                - tag: ifdescr
+                  value: "{#IFDESCR}"
+                - tag: policyname
+                  value: "{#POLICYMAPNAME}"
+            - uuid: 7502c02ca03c434ea4bed1fd03178691
+              name: "QoS dropped packets by policy {#POLICYMAPNAME} using class {#CLASSMAPNAME}"
+              type: SNMP_AGENT
+              snmp_oid: "get[.1.3.6.1.4.1.9.9.166.1.15.1.1.14.{#QOSIFINDEX}.{#CBQOSOBJECTSINDEX}]"
+              key: "qos.dropped.packets[{#QOSIFINDEX},{#CBQOSOBJECTSINDEX}]"
+              delay: 5m
+              description: "Number of packets dropped by the QoS policy {#POLICAYMAPNAME} in class {#CLASSMAPNAME} on interface {#IFALIAS}. Data retrieved via Cisco CBQoS MIB from OID cbQosCMDropPkt"
+              preprocessing:
+                - type: SIMPLE_CHANGE
+                  parameters:
+                    - ""
+              tags:
+                - tag: classname
+                  value: "{#CLASSMAPNAME}"
+                - tag: component
+                  value: qos
+                - tag: direction
+                  value: "{#POLICYDIRECTION}"
+                - tag: ifalias
+                  value: "{#IFALIAS}"
+                - tag: ifdescr
+                  value: "{#IFDESCR}"
+                - tag: policyname
+                  value: "{#POLICYMAPNAME}"
+          lld_macro_paths:
+            - lld_macro: "{#CBQOSOBJECTSINDEX}"
+              path: $.cbQoSObjectsIndex
+            - lld_macro: "{#CLASSMAPID}"
+              path: $.classMapId
+            - lld_macro: "{#CLASSMAPNAME}"
+              path: $.classMapName
+            - lld_macro: "{#IFALIAS}"
+              path: $.ifAlias
+            - lld_macro: "{#IFDESCR}"
+              path: $.ifDescr
+            - lld_macro: "{#IFINDEX}"
+              path: $.ifIndex
+            - lld_macro: "{#POLICYDIRECTION}"
+              path: $.policyDirection
+            - lld_macro: "{#POLICYMAPNAME}"
+              path: $.policyMapName
+            - lld_macro: "{#QOSIFINDEX}"
+              path: $.qosIfIndex
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  // Classmap discovery script
+                  var counterRegex = /\.1\.15\.1\.1\.2\.(\d+)\.(\d+)\s+=\s+Counter32:/;
+                  var gaugeRegex = /\.1\.5\.1\.1\.2\.(\d+)\.(\d+)\s+=\s+Gauge32:\s+(\d+)/;
+                  var classRegex = /\.1\.7\.1\.1\.1\.(\d+)\s+=\s+STRING:\s+"(.+?)"/;
+                  var ifDescrRegex =
+                    /\.1\.3\.6\.1\.2\.1\.2\.2\.1\.2\.(\d+)\s+=\s+STRING:\s+"(.+?)"/;
+                  var ifAliasRegex =
+                    /\.1\.3\.6\.1\.2\.1\.31\.1\.1\.1\.18\.(\d+)\s+=\s+STRING:\s+"(.*?)"/;
+                  var policyDirRegex =
+                    /\.1\.3\.6\.1\.4\.1\.9\.9\.166\.1\.1\.1\.1\.3\.(\d+)\s+=\s+INTEGER:\s+(\d+)/;
+                  var qosIfCfgGaugeRegex =
+                    /\.1\.3\.6\.1\.4\.1\.9\.9\.166\.1\.5\.1\.1\.2\.(\d+)\.\1\s+=\s+Gauge32:\s+(\d+)/;
+                  var qosIfToIfIndexRegex =
+                    /\.1\.3\.6\.1\.4\.1\.9\.9\.166\.1\.1\.1\.1\.4\.(\d+)\s+=\s+INTEGER:\s+(\d+)/;
+                  var policyMapNameRegex = /\.1\.6\.1\.1\.1\.(\d+)\s+=\s+STRING:\s+"(.+?)"/;
+
+                  var lines = typeof value === "string" ? value.split("\n") : value;
+
+                  var classNames = {};
+                  var ifDescriptions = {};
+                  var ifAliases = {};
+                  var policyDirections = {};
+                  var qosIfToCfgIndex = {};
+                  var qosIfToIfIndex = {};
+                  var policyMapNames = {};
+                  var cbQoSObjectClasses = [];
+
+                  // Collect class map names
+                  for (var i = 0; i < lines.length; i++) {
+                    var match = classRegex.exec(lines[i]);
+                    if (match) classNames[parseInt(match[1])] = match[2];
+                  }
+
+                  // Collect interface descriptions
+                  for (var i = 0; i < lines.length; i++) {
+                    var match = ifDescrRegex.exec(lines[i]);
+                    if (match) ifDescriptions[parseInt(match[1])] = match[2];
+                  }
+
+                  // Collect interface aliases
+                  for (var i = 0; i < lines.length; i++) {
+                    var match = ifAliasRegex.exec(lines[i]);
+                    if (match) ifAliases[parseInt(match[1])] = match[2];
+                  }
+
+                  // Collect policy directions
+                  for (var i = 0; i < lines.length; i++) {
+                    var match = policyDirRegex.exec(lines[i]);
+                    if (match) policyDirections[parseInt(match[1])] = parseInt(match[2]);
+                  }
+
+                  // Map QoSIfIndex → cbQoSConfigIndex
+                  for (var i = 0; i < lines.length; i++) {
+                    var match = qosIfCfgGaugeRegex.exec(lines[i]);
+                    if (match) qosIfToCfgIndex[parseInt(match[1])] = parseInt(match[2]);
+                  }
+
+                  // Map QoSIfIndex → physical ifIndex
+                  for (var i = 0; i < lines.length; i++) {
+                    var match = qosIfToIfIndexRegex.exec(lines[i]);
+                    if (match) qosIfToIfIndex[parseInt(match[1])] = parseInt(match[2]);
+                  }
+
+                  // Map cbQoSConfigIndex → policyMapName
+                  for (var i = 0; i < lines.length; i++) {
+                    var match = policyMapNameRegex.exec(lines[i]);
+                    if (match) policyMapNames[parseInt(match[1])] = match[2];
+                  }
+
+                  // Collect QoS Object class mappings
+                  for (var i = 0; i < lines.length; i++) {
+                    var match = gaugeRegex.exec(lines[i]);
+                    if (match) {
+                      var ifIndex = parseInt(match[1]);
+                      var cbQoSObjectsIndex = parseInt(match[2]);
+                      var classId = parseInt(match[3]);
+
+                      cbQoSObjectClasses.push({ ifIndex, cbQoSObjectsIndex, classId });
+                    }
+                  }
+
+                  var results = [];
+
+                  // Process counter entries and build final output
+                  for (var i = 0; i < lines.length; i++) {
+                    var match = counterRegex.exec(lines[i]);
+                    if (!match) continue;
+
+                    var qosIfIndex = parseInt(match[1]);
+                    var cbQoSObjectsIndex = parseInt(match[2]);
+
+                    var configIndex = qosIfToCfgIndex[qosIfIndex];
+                    var physicalIfIndex = qosIfToIfIndex[qosIfIndex];
+
+                    var matchObj = null;
+                    for (var j = 0; j < cbQoSObjectClasses.length; j++) {
+                      if (cbQoSObjectClasses[j].cbQoSObjectsIndex === cbQoSObjectsIndex) {
+                        matchObj = cbQoSObjectClasses[j];
+                        break;
+                      }
+                    }
+
+                    if (!matchObj) continue;
+
+                    var classId = matchObj.classId;
+
+                    results.push({
+                      qosIfIndex: qosIfIndex,
+                      ifIndex: physicalIfIndex || "UNKNOWN",
+                      ifDescr: ifDescriptions[physicalIfIndex] || "UNKNOWN",
+                      ifAlias: ifAliases[physicalIfIndex] || "UNKNOWN",
+                      policyMapName: policyMapNames[configIndex] || "UNKNOWN",
+                      policyDirection:
+                        policyDirections[qosIfIndex] === 1
+                          ? "IN"
+                          : policyDirections[qosIfIndex] === 2
+                          ? "OUT"
+                          : "UNKNOWN",
+                      cbQoSObjectsIndex: cbQoSObjectsIndex,
+                      classMapId: classId,
+                      classMapName: classNames[classId] || "UNKNOWN",
+                    });
+                  }
+
+                  return JSON.stringify(results, null, 2);
+      tags:
+        - tag: class
+          value: network
+        - tag: target
+          value: cisco
+        - tag: target
+          value: cisco-qos
+      macros:
+        - macro: "{$NET.IF.IFDESCR.MATCHES}"
+          value: ".*"
+          description: "Used in QOS class discovery"
+        - macro: "{$NET.IF.IFDESCR.NOT_MATCHES}"
+          value: CHANGE_IF_NEEDED
+          description: "Used in QOS class discovery"
+        - macro: "{$QOS.CLASS.MAPNAME.MATCHES}"
+          value: ".*"
+          description: "Used in QOS class discovery"
+        - macro: "{$QOS.CLASS.MAPNAME.NOT_MATCHES}"
+          value: CHANGE_IF_NEEDED
+          description: "Used in QOS class discovery"
+        - macro: "{$QOS.POLICY.MAPNAME.MATCHES}"
+          value: ".*"
+          description: "Used in QOS class discovery"
+        - macro: "{$QOS.POLICY.MAPNAME.NOT_MATCHES}"
+          value: CHANGE_IF_NEEDED
+          description: "Used in QOS class discovery"
