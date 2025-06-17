@@ -6,14 +6,14 @@ Monitor Cisco QOS devices with SNMP.
 
 ## Macros Used
 
-| Name                              | Description             | Default            | Type       |
-| --------------------------------- | ----------------------- | ------------------ | ---------- |
-| {$NET.IF.IFDESCR.MATCHES}         | <p>.\*</p>              | `dclient-cert.pem` | Text macro |
-| {$NET.IF.IFDESCR.NOT_MATCHES}     | <p>CHANGE_IF_NEEDED</p> | `dclient-key.pem`  | Text macro |
-| {$QOS.CLASS.MAPNAME.MATCHES}      | <p>.\*</p>              | `dclient-key.pem`  | Text macro |
-| {$QOS.CLASS.MAPNAME.NOT_MATCHES}  | <p>CHANGE_IF_NEEDED</p> | `dclient-key.pem`  | Text macro |
-| {$QOS.POLICY.MAPNAME.MATCHES}     | <p>.\*</p>              | `dclient-key.pem`  | Text macro |
-| {$QOS.POLICY.MAPNAME.NOT_MATCHES} | <p>CHANGE_IF_NEEDED</p> | `dclient-key.pem`  | Text macro |
+| Name                              | Description | Default            | Type       |
+| --------------------------------- | ----------- | ------------------ | ---------- |
+| {$NET.IF.IFDESCR.MATCHES}         | <p> - </p>  | `.*`               | Text macro |
+| {$NET.IF.IFDESCR.NOT_MATCHES}     | <p> - </p>  | `CHANGE_IF_NEEDED` | Text macro |
+| {$QOS.CLASS.MAPNAME.MATCHES}      | <p> - </p>  | `.*`               | Text macro |
+| {$QOS.CLASS.MAPNAME.NOT_MATCHES}  | <p> - </p>  | `CHANGE_IF_NEEDED` | Text macro |
+| {$QOS.POLICY.MAPNAME.MATCHES}     | <p> - </p>  | `.*`               | Text macro |
+| {$QOS.POLICY.MAPNAME.NOT_MATCHES} | <p> - </p>  | `CHANGE_IF_NEEDED` | Text macro |
 
 ## Discovery Rules
 
